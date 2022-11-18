@@ -17,7 +17,7 @@ struct TpData {
 };
 
 struct TpPessoa{
-	char cpf[XV], nome[XL], endereco[XXX], cidade[XL], estado[XL], email[XL], status;
+	char cpf[XV], nome[XL], endereco[XXX], cidade[XL], estado[2], email[XL], status;
 };
 struct TpCidade{
 	int codCidade;
@@ -38,22 +38,51 @@ struct TpPassagem{
 void RotinaCriarArq(void) {
 	FILE *Ptr;
 	int i;
-//	char arq[4][30] = {"pesssoas.dat", "cidades.dat", "voos.dat", "passagens.dat"};
-//	for(i=0; i<4; i++) {
-//		Ptr = fopen(arq[i], "ab");
-//		fclose(Ptr);
-//	}
-Ptr = fopen("pesssoas.dat", "ab");
-fclose(Ptr);
+	char arq[4][30] = {"pessoas.dat", "cidades.dat", "voos.dat", "passagens.dat"};
+	for(i=0; i<4; i++) {
+		Ptr = fopen(arq[i], "ab");
+		fclose(Ptr);
+	}
 }
 
-void InsercaoDiretaPessoa(FILE *PtrPessoa)
+void InsercaoDiretaPessoa(FILE *Ptr)
 {
-	TpPessoa aux;
-	int QtdPessoas;
-	
+	TpPessoa regA, regB;
+	int i;
+	i = ftell(Ptr) / sizeof(TpPessoa) - 1;
+	if(i > 0) {
+		fseek(Ptr, sizeof(TpPessoa) * i, SEEK_SET);
+		fread(&regA, sizeof(TpPessoa), 1, Ptr);
+		fseek(Ptr, sizeof(TpPessoa) * (i-1), SEEK_SET);
+		fread(&regB, sizeof(TpPessoa), 1, Ptr);
+		while(i > 0 && stricmp(regA.nome, regB.nome) < 0) {
+			fseek(Ptr, sizeof(TpPessoa) * i, SEEK_SET);
+			fwrite(&regB, sizeof(TpPessoa), 1, Ptr);
+			fseek(Ptr, sizeof(TpPessoa) * (i-1), SEEK_SET);
+			fwrite(&regA, sizeof(TpPessoa), 1, Ptr);
+			i--;
+			if(i>0) {
+				fseek(Ptr, sizeof(TpPessoa) * i, SEEK_SET);
+				fread(&regA, sizeof(TpPessoa), 1, Ptr);
+				fseek(Ptr, sizeof(TpPessoa) * (i-1), SEEK_SET);
+				fread(&regB, sizeof(TpPessoa), 1, Ptr);
+			}
+		}
+	}
+}
 
-	
+// Busca pessoa pelo CPF
+int BuscaCPF(FILE *Ptr, char cpf[]) {
+	TpPessoa reg;
+	// Ponteiro no começo
+	rewind(Ptr);
+	fread(&reg, sizeof(TpPessoa), 1, Ptr);
+	while(!feof(Ptr) && strcmp(cpf, reg.cpf) == 0)
+		fread(&reg, sizeof(TpPessoa), 1, Ptr);
+	if(!feof(Ptr))
+		return ftell(Ptr) - sizeof(TpPessoa); // Encontrou
+	else
+		return -1; // Nao Encontrou
 }
 
 void CadastroPessoa(void)
@@ -72,12 +101,36 @@ void CadastroPessoa(void)
 		// Cadastrando Pessoa
 		fseek(PtrPessoa, 0, SEEK_END);
 		fwrite(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+		InsercaoDiretaPessoa(PtrPessoa);
 		printf("\nCPF: "), fflush(stdin), gets(reg.cpf);
 	}
 	fclose(PtrPessoa);
 }
 
+void AlterarPessoa(void)
+{
+	TpPessoa reg;
+	int pos;
+	FILE *PtrPessoa = fopen("pessoas.dat", "rb+");
+	printf("Digite o CPf: "), fflush(stdin), gets(reg.cpf);
+	pos = BuscaCPF(PtrPessoa, reg.cpf);
+	if(pos != -1) {
+		fseek(PtrPessoa, pos, SEEK_SET), fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+		printf("\n\nNome: %s\n\n", reg.nome);	
+	} else printf("\nCPF Nao encontrado!");
+	fclose(PtrPessoa);
+}
+
 int main() {
 	RotinaCriarArq();
-	CadastroPessoa();
+//	CadastroPessoa();
+	AlterarPessoa();
+	FILE *Ptr = fopen("pessoas.dat", "rb");
+	TpPessoa reg;
+	fread(&reg, sizeof(TpPessoa), 1, Ptr);
+	while(!feof(Ptr)) {
+		printf("%s\n", reg.nome);
+		fread(&reg, sizeof(TpPessoa), 1, Ptr);
+	}
+	fclose(Ptr);
 }
