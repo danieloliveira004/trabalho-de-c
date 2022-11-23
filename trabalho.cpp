@@ -45,6 +45,9 @@ void RotinaCriarArq(void) {
 	}
 }
 
+// VALIDAÇÕES
+int validarData(TpData data);
+
 void tabelaASCII(void);
 void titulo(char title[]);
 void opcoesMenu(int posic, char texto[]);
@@ -64,6 +67,7 @@ int confirmar(int y);
 void limparParteDaTela(int x1, int y1, int x2, int y2);
 
 
+//____________________________________ FUNCOES DE INSERCAO DIRETA ____________________________________
 void InsercaoDiretaPessoa(FILE *Ptr)
 {
 	TpPessoa regA, regB;
@@ -90,6 +94,125 @@ void InsercaoDiretaPessoa(FILE *Ptr)
 	}
 }
 
+//Inser��o direta - ordenado pelo nome da cidade
+void InsercaoDiretaCidade(FILE *PtrCidade){
+	TpCidade regA, regB;
+	int i;
+	
+	i = ftell(PtrCidade) / sizeof(TpCidade) - 1;
+	if(i > 0) {
+		fseek(PtrCidade, sizeof(TpCidade) * i, SEEK_SET);
+		fread(&regA, sizeof(TpCidade), 1, PtrCidade);
+		fseek(PtrCidade, sizeof(TpCidade) * (i-1), SEEK_SET);
+		fread(&regB, sizeof(TpCidade), 1, PtrCidade);
+		
+		while(i > 0 && stricmp(regA.nomeCidade, regB.nomeCidade) < 0) {
+			fseek(PtrCidade, sizeof(TpCidade) * i, SEEK_SET);
+			fwrite(&regB, sizeof(TpCidade), 1, PtrCidade);
+			fseek(PtrCidade, sizeof(TpCidade) * (i-1), SEEK_SET);
+			fwrite(&regA, sizeof(TpCidade), 1, PtrCidade);
+			i--;
+			
+			if(i > 0) {
+				fseek(PtrCidade, sizeof(TpCidade) * i, SEEK_SET);
+				fread(&regA, sizeof(TpCidade), 1, PtrCidade);
+				fseek(PtrCidade, sizeof(TpCidade) * (i-1), SEEK_SET);
+				fread(&regB, sizeof(TpCidade), 1, PtrCidade);
+			}
+		}
+	}
+}
+
+//Inser��o direta - ordenado pela data do voo --------------  N�O FINALIZADA!!
+void InsercaoDiretaVoo(FILE *PtrVoo){
+	TpVoo regA, regB;
+	int i;
+	
+	i = ftell(PtrVoo) / sizeof(TpVoo) - 1;
+	if(i > 0) {
+		fseek(PtrVoo, sizeof(TpVoo) * i, SEEK_SET);
+		fread(&regA, sizeof(TpVoo), 1, PtrVoo);
+		fseek(PtrVoo, sizeof(TpVoo) * (i-1), SEEK_SET);
+		fread(&regB, sizeof(TpVoo), 1, PtrVoo);
+		
+		while(i > 0 /*&& (AQUI PRECISA TER A VERIFICACAO DE QUAL DATA � MAIOR)*/) { // ATEN��O NESSA PARTE (N�o sei como vamos verificar e como a data vai ficar no final das contas
+			fseek(PtrVoo, sizeof(TpVoo) * i, SEEK_SET);
+			fwrite(&regB, sizeof(TpVoo), 1, PtrVoo);
+			fseek(PtrVoo, sizeof(TpVoo) * (i-1), SEEK_SET);
+			fwrite(&regA, sizeof(TpVoo), 1, PtrVoo);
+			i--;
+			
+			if(i > 0) {
+				fseek(PtrVoo, sizeof(TpVoo) * i, SEEK_SET);
+				fread(&regA, sizeof(TpVoo), 1, PtrVoo);
+				fseek(PtrVoo, sizeof(TpVoo) * (i-1), SEEK_SET);
+				fread(&regB, sizeof(TpVoo), 1, PtrVoo);
+			}
+		}
+	}
+}
+
+//____________________________________ FUNCOES DE BUSCA ____________________________________
+//Busca EXAUSTIVA pelo c�digo da cidade
+int BuscaCodCidade(FILE *PtrCidade, int codCidade){
+	TpCidade Registro; 
+	
+	//Posiciona o Ponteiro no Inicio
+	rewind(PtrCidade); 
+	//apartir da onde esta o ponteiro, vai pegar 1x o tamanho da estrutura e vai jogar p variavel Registro
+	fread(&Registro,sizeof(TpCidade),1,PtrCidade); 
+	
+	while(!feof(PtrCidade) && codCidade != Registro.codCidade)
+		//preciso ler de novo (o ponteiro anda a cada lida)
+		fread(&Registro,sizeof(TpCidade),1,PtrCidade); 
+		
+	//ou posso perg --> stricmp(codCidade,Registro.codCidade) - em arquivo n�o tem problema de acessar lixo
+	if(!feof(PtrCidade) && Registro.status == 'A') 
+		//o "-sizeof" (menos) � pq ele para na frente do arq ent�o precisa voltar p pegar a posicao correta
+		return ftell(PtrCidade)-sizeof(TpCidade); 
+	else
+		return -1;
+}
+
+//Busca SEQUENCIAL COM SENTINELA pelo c�digo do voo
+int BuscaCodVoo(FILE *PtrVoo, int codVoo){
+	TpVoo Registro; 
+	int QtdeReg, i;
+	
+	Registro.codVoo = codVoo;
+	Registro.status = 'A';
+	//coloquei o ponteiro no final
+	fseek(PtrVoo,0,SEEK_END);
+	//inseri o cod e status na ultima posi��o (as demais informa��es foi com lixo)
+	fwrite(&Registro,sizeof(TpVoo),1,PtrVoo);
+	//posicionei o ponteiro no inicio
+	rewind(PtrVoo); 
+	
+	fread(&Registro,sizeof(TpVoo),1,PtrVoo); 
+	while(codVoo != Registro.codVoo) 
+		fread(&Registro,sizeof(TpVoo),1,PtrVoo); 
+		
+	if(!feof(PtrVoo) && Registro.status == 'A') {
+		i = ftell(PtrVoo)-sizeof(TpVoo);
+		
+		fseek(PtrVoo,0,SEEK_END);
+		QtdeReg = ftell(PtrVoo)-sizeof(TpVoo); 
+		fread(&Registro,QtdeReg*sizeof(TpVoo),1,PtrVoo);
+		Registro.status = 'I';
+		fwrite(&Registro,sizeof(TpVoo),1,PtrVoo);
+		
+		return i; 
+	}else{
+		fseek(PtrVoo,0,SEEK_END);
+		QtdeReg = ftell(PtrVoo)-sizeof(TpVoo); 
+		fread(&Registro,QtdeReg*sizeof(TpVoo),1,PtrVoo);
+		Registro.status = 'I';
+		fwrite(&Registro,sizeof(TpVoo),1,PtrVoo);
+		
+		return -1;
+	}
+}
+
 // Busca pessoa pelo CPF
 int BuscaCPF(FILE *Ptr, char cpf[]) {
 	TpPessoa reg;
@@ -104,6 +227,7 @@ int BuscaCPF(FILE *Ptr, char cpf[]) {
 		return -1; // Nao Encontrou
 }
 
+//____________________________________ FUNCOES DE CADASTRO ____________________________________
 void CadastroPessoa(void)
 {
 	FILE *PtrPessoa = fopen("pessoas.dat", "rb+");
@@ -139,6 +263,101 @@ void CadastroPessoa(void)
 	} while(continuar(17) != 27);
 	
 	fclose(PtrPessoa);
+}
+
+void CadastroCidade(void) {
+	TpCidade Registro;
+	int pos, inputs[3][2]={{41, 5}, {39,7}, {41,9}};	
+	FILE *PtrCidade = fopen("cidades.dat","rb+");
+
+	gotoxy(23,5),printf("Codigo da cidade: ");
+	gotoxy(23,7),printf("Nome da cidade: ");
+	gotoxy(23,9),printf("Estado da cidade: ");
+
+	do {
+		mensagem("Digite os dados necessarios...", 0);
+		limparLinha(11);
+		limparCampos(3, inputs);
+		irCampo(inputs[0]), scanf("%d", &Registro.codCidade);
+		
+		//busca para verificar se j� existe o c�digo dessa cidade cadastrado
+		pos = BuscaCodCidade(PtrCidade,Registro.codCidade);
+		if(pos==-1){
+			fflush(stdin), irCampo(inputs[1]), gets(Registro.nomeCidade);
+			fflush(stdin), irCampo(inputs[2]), gets(Registro.estCidade);
+			Registro.status = 'A';
+			
+			fwrite(&Registro,sizeof(TpCidade),1,PtrCidade);
+			mensagem("CIDADE CADASTRADA COM SUCESSO!", 1);
+			//gravo o arquivo dentro da inser��o direta
+			InsercaoDiretaCidade(PtrCidade);
+		} else mensagem("CIDADE JA CADASTRADA!", -1);			
+	} while(continuar(11) != 27);
+	fclose(PtrCidade);
+}
+
+void CadastroVoo(void) {
+	TpVoo Registro;
+	TpData data;
+	int pos, valido=1, inputs[5][2]={{38, 5}, {47,7}, {42,9}, {41,11}, {42,13}};
+	FILE *PtrVoo = fopen("voos.dat", "rb+");
+
+	gotoxy(23, 5), printf("Codigo do Voo: ");
+	gotoxy(23, 7), printf("Data do Voo [dd mm aa]: ");
+	gotoxy(23, 9), printf("Numero de Lugares: ");
+	gotoxy(23, 11), printf("Cidade de Origem: ");
+	gotoxy(23, 13), printf("Cidade de Destino: ");
+	
+	do {
+		valido = 1;
+		mensagem("Digite os dados para cadastrar o voo...", 0);
+		limparLinha(15);
+		limparCampos(5, inputs);
+		irCampo(inputs[0]), scanf("%d", &Registro.codVoo);
+		//busca para verificar se j� existe o c�digo desse voo cadastrado - SEQUENCIAL COM SENTINELA
+		pos = BuscaCodVoo(PtrVoo,Registro.codVoo);
+		if(pos != -1){
+			irCampo(inputs[1]), scanf("%d %d %d", &data.dia, &data.mes, &data.ano);
+			if(!validarData(data)) {
+				valido = 0;
+				mensagem("DATA INVALIDA!", -1);
+			} else Registro.dataVoo = data;
+			if(valido) {
+				irCampo(inputs[2]), scanf("%d", &Registro.nrLugares);
+				if(Registro.nrLugares <= 0) {
+					valido = 0;
+					mensagem("NUMERO DE LUGARES INVALIDO", -1);
+				}
+			}
+			FILE *PtrCidade = fopen("cidades.dat","rb");
+			if(valido) {
+				irCampo(inputs[3]), scanf("%d", &Registro.codCidadeOrigem);
+				//abro o arquivo da cidade para pesquisar se a cidade origem esta cadastrada 
+				if(BuscaCodCidade(PtrCidade,Registro.codCidadeOrigem) == -1)  {
+					mensagem("CIDADE NAO ENCONTRADA", -1);
+					valido = 0;
+				}
+			}
+			if(valido) {
+				irCampo(inputs[4]), scanf("%d", &Registro.codCidadeDestino);
+				if(BuscaCodCidade(PtrCidade, Registro.codCidadeDestino)==-1) {
+					mensagem("CIDADE NAO ENCONTRADA", -1);
+					valido = 0;
+				}
+			}
+			fclose(PtrCidade);
+			// Todos os dados valido, realizar cadastro
+			if(valido) {
+				Registro.QtdeLugarVendido = 0;
+				Registro.status = 'A';
+				mensagem("CADASTO REALIZADO COM SUCESSO!", 1);
+				fwrite(&Registro,sizeof(TpVoo),1,PtrVoo);
+				//gravo o arquivo dentro da inser��o direta
+				InsercaoDiretaVoo(PtrVoo);
+			}	
+		} else mensagem("VOO JA CADASTRADO!", -1);
+	} while(continuar(15) != 27);
+	fclose(PtrVoo);
 }
 
 void AlterarPessoa(void)
@@ -251,7 +470,7 @@ void ExclusaoLogicaPessoa(void)
 				// Exclusao Logica
 				reg.status = 'I';
 				// Outra tabelas #ALTERAR
-				fseek(PtrPessoa, 0, SEEK_END);
+				fseek(PtrPessoa, pos, SEEK_SET);
 				fwrite(&reg, sizeof(TpPessoa), 1, PtrPessoa);
 				mensagem("Exclusao concluida!", 1);
 			} else mensagem("Exclusao cancelada!", 0);
@@ -267,13 +486,22 @@ void RelatorioPessoa(void)
 	int y, i, page=0, pages, qtd;
 	char op;
 	FILE *PtrPessoa = fopen("pessoas.dat", "rb");
-	fseek(PtrPessoa, 0, SEEK_END);
-	qtd = ftell(PtrPessoa) / sizeof(TpPessoa);
+
+	// Calcular as paginas
+	fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+	qtd=0;
+	while(!feof(PtrPessoa)) {
+		if(reg.status == 'A') 
+			qtd++;
+		fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+	}
 	pages = qtd / 3;
 	if(qtd % 3 == 1)
 		pages++;
+		
 	// Mensagem
 	mensagem("Escolha uma opcao: ", 0);
+
 	do {
 		limparParteDaTela(23, 6, 79, 24);
 
@@ -294,7 +522,7 @@ void RelatorioPessoa(void)
 		i=0;
 		while(i<3 && !feof(PtrPessoa)) {
 			if(reg.status == 'A') {
-				gotoxy(23, 6 + y), textcolor(3), printf("Nome: "), textcolor(7), printf("%s", reg.nome);
+				gotoxy(23, 6 + y), textcolor(3), printf("%c - Nome: ", reg.status), textcolor(7), printf("%s", reg.nome);
 				gotoxy(23, 7 + y), textcolor(3), printf("Email: "), textcolor(7), printf("%s", reg.email);
 				gotoxy(23, 8 + y), textcolor(3), printf("Estado: "), textcolor(7), printf("%s", reg.estado);
 				gotoxy(33, 8 + y), textcolor(3), printf(" | Cidade: "), textcolor(7), printf("%s", reg.cidade);
@@ -416,8 +644,10 @@ void menu(void)
 						case 'B':
 							break;
 						case 'C':
+							CadastroVoo();
 							break;
 						case 'D':
+							CadastroCidade();
 							break;
 					}
 					opSub = toupper(escolherOpcao(6));
@@ -470,7 +700,27 @@ int main() {
 //	fclose(Ptr);
 }
 
-// DESENHO
+// VALIDAÇÔES
+//VALIDAR DATA
+int validarData(TpData data) {
+	if(data.ano < 1900 || data.mes <= 0 || data.mes > 12  || data.dia <= 0)
+		return 0;
+	if(data.mes % 2 == 0)
+		if(data.dia > 30)
+			return 0;
+	else
+		if(data.dia > 31)
+			return 0;
+	if(data.ano % 4 == 0)
+		if(data.dia > 29)
+			return 0;
+	else
+		if(data.dia > 28)
+			return 0;
+	// VALIDO
+	return 1;	
+}
+
 // ESTUTURA DO SISTEMA
 void tabelaASCII(void)
 {
@@ -696,4 +946,27 @@ void desenhoPoltronas(void)
 }
 
 
+// 1 - Maior(recente) 0 - Igual -1 - Menor(passado)
+// Data1 comparda com Data2
+// int compararData(TpData data1, TpData data2)
+// {
+// 	// Comparando anos
+// 	if(data1.ano > data2.ano)
+// 		return 1;
+// 	else if (data1.ano < data2.ano)
+// 		return -1;
+	
+// 	// Anos iguais -> comparar meses
+// 	if(data1.mes > data2.mes)
+// 			return 1;
+// 	else if (data1.mes < data2.mes)
+// 			return -1;
 
+// 	// Meses iguais -> comparar datas
+// 	if(data1.dia > data2.dia)
+// 		return 1;
+// 	else if(data1.dia < data2.dia)
+// 		return -1;
+	
+// 	return 0; // Data igual
+// }
