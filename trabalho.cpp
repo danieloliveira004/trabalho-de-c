@@ -17,7 +17,7 @@ struct TpData {
 };
 
 struct TpPessoa{
-	char cpf[XV], nome[XL], endereco[XXX], cidade[XL], estado[2], email[XL], status;
+	char cpf[XV], nome[XL], endereco[XXX], cidade[XL], estado[3], email[XL], status;
 };
 struct TpCidade{
 	int codCidade;
@@ -34,7 +34,7 @@ struct TpPassagem{
 	char cpf[XV], status;
 };
 
-//____________________________________ FUNÇÕES ____________________________________
+//____________________________________ FUNï¿½ï¿½ES ____________________________________
 void RotinaCriarArq(void) {
 	FILE *Ptr;
 	int i;
@@ -44,6 +44,25 @@ void RotinaCriarArq(void) {
 		fclose(Ptr);
 	}
 }
+
+void tabelaASCII(void);
+void titulo(char title[]);
+void opcoesMenu(int posic, char texto[]);
+int escolherOpcao(int itens);
+void limparOpcoes(void);
+void mensagem(char msg[], int status);
+void estruturaBase(void);
+void limparTela(void);
+int continuar(int y);
+void linha(int y, int color);
+void limparLinha(int y);
+void irCampo(int posic[2]);
+void limparCampos(int qtd, int posic[][2]);
+void limparCampoUnico(int posic[2]);
+int confirmar(int y);
+//int escolhaPoltrona(tpVoo tabVoos[TFV], int TLV, tpPassagem tabPassagens[TFPG], int TLPG, int codVoo);
+void limparParteDaTela(int x1, int y1, int x2, int y2);
+
 
 void InsercaoDiretaPessoa(FILE *Ptr)
 {
@@ -74,10 +93,10 @@ void InsercaoDiretaPessoa(FILE *Ptr)
 // Busca pessoa pelo CPF
 int BuscaCPF(FILE *Ptr, char cpf[]) {
 	TpPessoa reg;
-	// Ponteiro no começo
+	// Ponteiro no comeï¿½o
 	rewind(Ptr);
 	fread(&reg, sizeof(TpPessoa), 1, Ptr);
-	while(!feof(Ptr) && strcmp(cpf, reg.cpf) == 0)
+	while(!feof(Ptr) && strcmp(cpf, reg.cpf) != 0)
 		fread(&reg, sizeof(TpPessoa), 1, Ptr);
 	if(!feof(Ptr))
 		return ftell(Ptr) - sizeof(TpPessoa); // Encontrou
@@ -89,73 +108,356 @@ void CadastroPessoa(void)
 {
 	FILE *PtrPessoa = fopen("pessoas.dat", "rb+");
 	TpPessoa reg;
-	printf("\nCPF: "), fflush(stdin), gets(reg.cpf);
-	while(strcmp(reg.cpf, "\0") != 0) {
-		printf("\nNome: "), fflush(stdin), gets(reg.nome);
-		printf("\nEndereco: "), fflush(stdin), gets(reg.endereco);
-		printf("\nCidade: "), fflush(stdin), gets(reg.cidade);
-		printf("\nEstado: "), fflush(stdin), gets(reg.estado);
-		printf("\nEmail: "), fflush(stdin), gets(reg.email);
+	
+	int inputs[6][2] = {{28, 5}, {29, 7}, {30, 9}, {31, 11}, {31, 13}, {35, 15}};
+	
+	//CAMPOS
+	gotoxy(23, 5), printf("CPF: ");
+	gotoxy(23, 7), printf("Nome: ");
+	gotoxy(23, 9), printf("Email: "); 
+	gotoxy(23, 11), printf("Estado: "); 
+	gotoxy(23, 13), printf("Cidade: "); 
+	gotoxy(23, 15), printf("Logradouro: ");
+	
+	do {
+		mensagem("Digite os dados necessarios...", 0);
+		limparLinha(17);
+		limparCampos(6, inputs);
+		fflush(stdin), irCampo(inputs[0]), gets(reg.cpf);
+		fflush(stdin), irCampo(inputs[1]), gets(reg.nome);
+		fflush(stdin), irCampo(inputs[2]), gets(reg.email);
+		fflush(stdin), irCampo(inputs[3]), gets(reg.estado);
+		fflush(stdin), irCampo(inputs[4]), gets(reg.cidade);
+		fflush(stdin), irCampo(inputs[5]), gets(reg.endereco);
 		reg.status = 'A';
-		printf("%s", reg.cpf);
+		
 		// Cadastrando Pessoa
 		fseek(PtrPessoa, 0, SEEK_END);
 		fwrite(&reg, sizeof(TpPessoa), 1, PtrPessoa);
 		InsercaoDiretaPessoa(PtrPessoa);
-		printf("\nCPF: "), fflush(stdin), gets(reg.cpf);
-	}
+		mensagem("Pessoa cadastrado com sucesso!", 1);
+	} while(continuar(17) != 27);
+	
 	fclose(PtrPessoa);
 }
 
 void AlterarPessoa(void)
 {
-	TpPessoa reg;
-	int pos;
+	TpPessoa reg, aux;
+	int pos, inputs[6][2]={{34, 7}, {35, 9}, {36, 11}, {37, 13}, {38, 15}, {41, 17}};
 	FILE *PtrPessoa = fopen("pessoas.dat", "rb+");
-	printf("Digite o CPf: "), fflush(stdin), gets(reg.cpf);
-	pos = BuscaCPF(PtrPessoa, reg.cpf);
-	if(pos != -1) {
-		fseek(PtrPessoa, pos, SEEK_SET), fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
-		printf("\n\nNome: %s\n\n", reg.nome);	
-	} else printf("\nCPF Nao encontrado!");
+	char op;
+	
+	do {
+		limparTela();
+		mensagem("Digite o CPF para buscar a pessoa!", 0);
+		gotoxy(23, 5), printf("BUSCA PELO CPF: "), fflush(stdin), gets(reg.cpf);
+		pos = BuscaCPF(PtrPessoa, reg.cpf);
+		if(pos != -1) {
+			// Lendo registro
+			fseek(PtrPessoa, pos, SEEK_SET);
+			fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+
+			gotoxy(23, 7), printf("[A] - CPF: %s", reg.cpf);
+			gotoxy(23, 9), printf("[B] - Nome: %s", reg.nome);
+			gotoxy(23, 11), printf("[C] - Email: %s", reg.email); 
+			gotoxy(23, 13), printf("[D] - Estado: %s", reg.estado); 
+			gotoxy(23, 15), printf("[E] -  Cidade: %s", reg.cidade); 
+			gotoxy(23, 17), printf("[F] - Endereco: %s", reg.endereco);
+			
+			gotoxy(23, 19), printf("[S] - SALVAR");
+			gotoxy(23, 20), printf("[ESQ] - VOLTAR");
+			gotoxy(23, 22), printf("OPCAO: ");
+			
+			do {
+				limparLinha(24);
+				gotoxy(30, 22), op = toupper(getch());
+				switch(op)
+				{
+					case 'A':
+						gotoxy(23, 24), printf("EDITAR CPF: "), fflush(stdin), gets(aux.cpf);
+						strcpy(reg.cpf, aux.cpf);
+						limparCampoUnico(inputs[0]), irCampo(inputs[0]), textcolor(3), printf("%s", reg.cpf), textcolor(7);
+						break;
+					case 'B':
+						gotoxy(23, 24), printf("EDITAR NOME: "), fflush(stdin), gets(aux.nome);
+						strcpy(reg.nome, aux.nome);
+						limparCampoUnico(inputs[1]), irCampo(inputs[1]), textcolor(3), printf("%s", reg.nome), textcolor(7);
+						break;
+					case 'C':
+						gotoxy(23, 24), printf("EDITAR EMAIL: "), fflush(stdin), gets(aux.email);
+						strcpy(reg.email, aux.email);
+						limparCampoUnico(inputs[2]), irCampo(inputs[2]), textcolor(3), printf("%s", reg.email), textcolor(7);
+						break;
+					case 'D':
+						gotoxy(23, 24), printf("EDITAR ESTADO: "), fflush(stdin), gets(aux.estado);
+						strcpy(reg.estado, aux.estado);
+						limparCampoUnico(inputs[3]), irCampo(inputs[3]), textcolor(3), printf("%s", reg.estado), textcolor(7);
+						break;
+					case 'E':
+						gotoxy(23, 24), printf("EDITAR CIDADE: "), fflush(stdin), gets(aux.cidade);
+						strcpy(reg.cidade, aux.cidade);
+						limparCampoUnico(inputs[4]), irCampo(inputs[4]), textcolor(3), printf("%s", reg.cidade), textcolor(7);
+						break;
+					case 'F':
+						gotoxy(23, 24), printf("EDITAR ENDEREÃ‡O: "), fflush(stdin), gets(aux.endereco);
+						strcpy(reg.endereco, aux.endereco);
+						limparCampoUnico(inputs[5]), irCampo(inputs[5]), textcolor(3), printf("%s", reg.endereco), textcolor(7);
+						break;
+					case 'S':
+						mensagem("ALTERACAO CONCLUIDA", 1);
+						// Salvando ediÃ§Ã£o
+						fseek(PtrPessoa, pos, SEEK_SET);
+						fwrite(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+						// Alterar em outras tebelas #ALTERAR
+						break;
+					case 27:
+						mensagem("ALTERACOES CANCELADAS", -1);
+						break;
+				}
+			} while(op != 27 && op != 'S');
+		} else 
+			mensagem("CLIENTE NAO CADASTRADO!", -1);
+		limparLinha(24);
+	} while(continuar(24) != 27);
 	fclose(PtrPessoa);
 }
 
-void tabelaASCII(void);
-void titulo(char title[]);
-void opcoesMenu(int posic, char texto[]);
-int escolherOpcao(int itens);
-void limparOpcoes(void);
-void mensagem(char msg[], int status);
-void estruturaBase(void);
-void limparTela(void);
-int continuar(int y);
-void limparLinha(int y);
-void limparCampos(int qtd, int posic[][2]);
-void limparCampoUnico(int posic[2]);
-int confirmar(int y);
-//int escolhaPoltrona(tpVoo tabVoos[TFV], int TLV, tpPassagem tabPassagens[TFPG], int TLPG, int codVoo);
-void limparParteDaTela(int x1, int y1, int x2, int y2);
+void ExclusaoLogicaPessoa(void)
+{
+	TpPessoa reg;
+	FILE *PtrPessoa = fopen("pessoas.dat", "rb+");
+	int pos;
+	do {
+		limparLinha(19);
+		limparTela();
+		mensagem("Digite o CPF para bucar a pessoa!", 0);
+		gotoxy(23, 5), printf("BUSCA PELO CPF: "), fflush(stdin), gets(reg.cpf);
+		pos = BuscaCPF(PtrPessoa, reg.cpf);
+		if(pos != -1) {
+			// Lendo registro
+			fseek(PtrPessoa, pos, SEEK_SET);
+			fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+
+			gotoxy(23, 7), printf("[A] - CPF: %s", reg.cpf);
+			gotoxy(23, 9), printf("[B] - Nome: %s", reg.nome);
+			gotoxy(23, 11), printf("[C] - Email: %s", reg.email); 
+			gotoxy(23, 13), printf("[D] - Estado: %s", reg.estado); 
+			gotoxy(23, 15), printf("[E] -  Cidade: %s", reg.cidade); 
+			gotoxy(23, 17), printf("[F] - Endereco: %s", reg.endereco);
+
+			mensagem("Confirma exclusao ?", -1);
+			if(confirmar(19) == 13) {
+				// Exclusao Logica
+				reg.status = 'I';
+				// Outra tabelas #ALTERAR
+				fseek(PtrPessoa, 0, SEEK_END);
+				fwrite(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+				mensagem("Exclusao concluida!", 1);
+			} else mensagem("Exclusao cancelada!", 0);
+		} else mensagem("PESSOA NAO CADASTRADA!", -1);
+		limparLinha(19);
+	} while(continuar(19) != 27);
+	fclose(PtrPessoa);
+}
+
+void RelatorioPessoa(void)
+{
+	TpPessoa reg;
+	int y, i, page=0, pages, qtd;
+	char op;
+	FILE *PtrPessoa = fopen("pessoas.dat", "rb");
+	fseek(PtrPessoa, 0, SEEK_END);
+	qtd = ftell(PtrPessoa) / sizeof(TpPessoa);
+	pages = qtd / 3;
+	if(qtd % 3 == 1)
+		pages++;
+	// Mensagem
+	mensagem("Escolha uma opcao: ", 0);
+	do {
+		limparParteDaTela(23, 6, 79, 24);
+
+		// Voltar
+		gotoxy(69, 4), printf("[ESQ] SAIR");
+
+		if(page+1 <= pages)
+			gotoxy(65, 25), printf("[P] PROXIMO ->");
+		if(pages-1 > 0)
+			gotoxy(23, 25), printf("<- ANTERIOR [A]");
+
+		// Pagination
+		gotoxy(23, 4), printf("PAGINA (%d/%d)", page+1, pages+1);
+
+		y=0;
+		fseek(PtrPessoa, sizeof(TpPessoa)*(page * 3), SEEK_SET);
+		fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+		i=0;
+		while(i<3 && !feof(PtrPessoa)) {
+			if(reg.status == 'A') {
+				gotoxy(23, 6 + y), textcolor(3), printf("Nome: "), textcolor(7), printf("%s", reg.nome);
+				gotoxy(23, 7 + y), textcolor(3), printf("Email: "), textcolor(7), printf("%s", reg.email);
+				gotoxy(23, 8 + y), textcolor(3), printf("Estado: "), textcolor(7), printf("%s", reg.estado);
+				gotoxy(33, 8 + y), textcolor(3), printf(" | Cidade: "), textcolor(7), printf("%s", reg.cidade);
+				gotoxy(23, 9 + y), textcolor(3), printf("Endereco: "), textcolor(7), printf("%s", reg.endereco);
+				linha(10 + y, 3);
+				y += 6;
+				i++;
+			}
+			fread(&reg, sizeof(TpPessoa), 1, PtrPessoa);
+		}
+		op = toupper(getch());
+		if(op == 'P' && pages >= page+1)
+			page++;
+		if(op == 'A' && page-1 >= 0)
+			page--;
+	} while(op != 27);
+	fclose(PtrPessoa);
+}
 
 void menu(void)
 {
-	estruturaBase();
-	titulo("SISTEMA AREO");
-	mensagem("Seja Bem-Vind@! escolher uma opcao ao lado.", 0);
-	limparTela();
-	limparOpcoes();
-	// Menu
-	opcoesMenu(1, "CONSULTA");
-	opcoesMenu(2, "EDITAR");
-	opcoesMenu(3, "CADASTRAR");
-	opcoesMenu(4, "EXCLUIR");
-	opcoesMenu(5, "SAIR");	
+	char op, opSub;
+	do {
+		estruturaBase();
+		titulo("SISTEMA AREO");
+		mensagem("Seja Bem-Vind@! escolher uma opcao ao lado.", 0);
+		limparTela();
+		limparOpcoes();
+		// Menu
+		opcoesMenu(1, "CONSULTA");
+		opcoesMenu(2, "RELATORIO");
+		opcoesMenu(3, "EDITAR");
+		opcoesMenu(4, "CADASTRAR");
+		opcoesMenu(5, "EXCLUIR");
+		opcoesMenu(6, "SAIR");	
+		op = toupper(escolherOpcao(7));
+		switch(op)
+		{
+			// CONSULTA 			
+			case 'A':
+				titulo("SISTEMA AREO - CONSULTA");
+				limparOpcoes();
+				opcoesMenu(1, "PESSOAS");
+				opcoesMenu(2, "PASSAGENS");
+				opcoesMenu(3, "CADASTRAR");
+				opSub = toupper(escolherOpcao(4));
+				while(opSub != 27) {
+					switch(opSub)
+					{
+						case 'A':
+							break;
+						case 'B':
+							break;
+						case 'C':
+							break;
+					}
+					opSub = toupper(escolherOpcao(4));
+				}
+				break;
+			case 'B':
+				titulo("SISTEMA AREO - RELATORIO");
+				limparOpcoes();
+				opcoesMenu(1, "PESSOAS");
+				opcoesMenu(2, "PASSAGENS");
+				opcoesMenu(3, "CADASTRAR");
+				opSub = toupper(escolherOpcao(4));
+				while(opSub != 27) {
+					switch(opSub)
+					{
+						case 'A':
+							RelatorioPessoa();
+							break;
+						case 'B':
+							break;
+						case 'C':
+							break;
+					}
+					opSub = toupper(escolherOpcao(4));
+				}
+				break;
+			case 'C':
+				titulo("SISTEMA AREO - EDITAR");
+				limparOpcoes();
+				opcoesMenu(1, "PESSOAS");
+				opcoesMenu(2, "PASSAGENS");
+				opcoesMenu(3, "CADASTRAR");
+				opcoesMenu(4, "VOOS");
+				opSub = toupper(escolherOpcao(5));
+				while(opSub != 27) {
+					switch(opSub)
+					{
+						case 'A':
+							AlterarPessoa();
+							break;
+						case 'B':
+							break;
+						case 'C':
+							break;
+					}
+					limparTela();
+					opSub = toupper(escolherOpcao(5));
+				}
+				break;
+			case 'D':
+				titulo("SISTEMA AREO - CADASTRO");
+				limparOpcoes();
+				opcoesMenu(1, "PESSOAS");
+				opcoesMenu(2, "PASSAGENS");
+				opcoesMenu(3, "VOOS");
+				opcoesMenu(4, "CIDADES");
+				opcoesMenu(5, "SAIR");
+				opSub = toupper(escolherOpcao(6));
+				while(opSub != 27) {
+					switch(opSub)
+					{
+						case 'A':
+							CadastroPessoa();
+							break;
+						case 'B':
+							break;
+						case 'C':
+							break;
+						case 'D':
+							break;
+					}
+					opSub = toupper(escolherOpcao(6));
+				}
+				break;
+			case 'E':
+			titulo("SISTEMA AREO - CADASTRO");
+				limparOpcoes();
+				opcoesMenu(1, "PESSOAS");
+				opcoesMenu(2, "PASSAGENS");
+				opcoesMenu(3, "VOOS");
+				opcoesMenu(4, "CIDADES");
+				opcoesMenu(5, "SAIR");
+				opSub = toupper(escolherOpcao(6));
+				while(opSub != 27) {
+					switch(opSub)
+					{
+						case 'A':
+							ExclusaoLogicaPessoa();
+							break;
+						case 'B':
+							break;
+						case 'C':
+							break;
+						case 'D':
+							break;
+					}
+					opSub = toupper(escolherOpcao(6));
+				}
+				break;
+		}
+	} while(op != 27);
 }
 
 
 int main() {
 	RotinaCriarArq();
 	menu();
+	estruturaBase();
+	// RelatorioPessoa();
 ////	CadastroPessoa();
 //	AlterarPessoa();
 //	FILE *Ptr = fopen("pessoas.dat", "rb");
@@ -265,6 +567,14 @@ void mensagem(char msg[], int status)
 	textcolor(7);
 }
 
+void linha(int y, int color)
+{
+	int i;
+	for(i=23; i<79; i++)
+		gotoxy(i, y), textcolor(color), printf("_");
+	textcolor(7);
+}
+
 void limparTela(void)
 {
 	int x1=22, x2=80, y1=4, y2=30, i, j;
@@ -287,6 +597,10 @@ void limparLinha(int y)
 	int x1=22, x2=80, i;
 	for(i=x1; i<x2; i++)
 		gotoxy(i, y), printf(" ");
+}
+
+void irCampo(int posic[2]) {
+	gotoxy(posic[0], posic[1]);
 }
 
 void limparCampos(int qtd, int posic[][2])
